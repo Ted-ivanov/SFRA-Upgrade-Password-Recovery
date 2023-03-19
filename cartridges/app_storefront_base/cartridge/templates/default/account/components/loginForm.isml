@@ -35,7 +35,7 @@
                 class="hidden-xs-down"
                 title="${Resource.msg('link.login.forgotpassword', 'login', null)}"
                 data-toggle="modal"
-                href="${URLUtils.url('Account-PasswordResetDialogForm')}"
+                href="${URLUtils.url('Account-SendResetPin')}"
                 data-target="#requestPasswordResetModal">
                 ${Resource.msg('link.login.forgotpassword', 'login', null)}
             </a>

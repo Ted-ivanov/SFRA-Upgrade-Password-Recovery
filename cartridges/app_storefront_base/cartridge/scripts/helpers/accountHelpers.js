@@ -101,6 +101,77 @@ function sendPasswordResetEmail(email, resettingCustomer) {
     };
 
     emailHelpers.sendEmail(emailObj, 'account/password/passwordResetEmail', objectForEmail);
+
+}
+
+function sendResetPinEmail (email, resettingCustomer, pin) {
+    var ContentMgr = require('dw/content/ContentMgr');
+    // objectForEmail is the pdict for the ISML
+    // the the content and the time from the content asset ;
+    // TODO Check how to get the content from contet asset.
+    var CustomObjectMgr = require('dw/object/CustomObjectMgr');
+    var Transaction = require('dw/system/Transaction');
+    var Resource = require('dw/web/Resource');
+    var Site = require('dw/system/Site');
+    var emailHelpers = require('*/cartridge/scripts/helpers/emailHelpers');
+    var pinCustomObject = CustomObjectMgr.getCustomObject('passwordResetPin', email);
+    var ContentMgr = require('dw/content/ContentMgr');
+    const asset = ContentMgr.getContent('ca-pin-reset');
+    const assetContent = asset.custom.body.markup;
+    var pin = pinCustomObject.custom.pinNumber;
+    var content = dw.system.Site.getCurrent().getCustomPreferenceValue('passwordsResetEmailBody');
+    var time = dw.system.Site.getCurrent().getCustomPreferenceValue('resetPinTimeToLive');
+    var objectForEmail = {
+        firstName: resettingCustomer.profile.firstName,
+        lastName: resettingCustomer.profile.lastName,
+        pin: pin,
+        content: content,
+        time: time,
+        emailHeader: assetContent
+    };
+
+    var options = {
+        pin: pin,
+        content: content
+    }
+
+    var emailObj = {
+        to: email,
+        subject: Resource.msg('subject.profile.resetpassword.email', 'login', null),
+        from: Site.current.getCustomPreferenceValue('customerServiceEmail') || 'no-reply@testorganization.com',
+        type: emailHelpers.emailTypes.passwordChanged
+    };
+    // rendered from ISML
+    //  emailHelpers.sendEmail(emailObj, 'account/password/passwordResetPinEmail', objectForEmail);
+    var  renderTemplateHelper = require('*/cartridge/scripts/renderTemplateHelper');
+
+    var Template = require('dw/util/Template');
+
+    const context = toHashMap(options);
+    var template = new Template('account/password/passwordResetPinEmail');
+    // var content2 = template.render(context).text;
+    var content3 = renderTemplateHelper.getRenderedHtml(objectForEmail, 'account/password/passwordResetPinEmail')
+
+    var textObj = {
+        pin: pin,
+        lastName: resettingCustomer.profile.lastName,
+        firstName: resettingCustomer.profile.firstName,
+        greeting: Resource.msg('msg.passwordemail.dear', 'login', null),
+        time: time
+    }
+    var updatedText = findAndReplaceStrings(textObj, assetContent);
+
+    var Mail = require('dw/net/Mail');
+
+    var email = new Mail();
+    email.addTo(emailObj.to);
+    email.setSubject(emailObj.subject);
+    email.setFrom(emailObj.from);
+    email.setContent(updatedText, 'text/html', 'UTF-8');
+    email.send();
+    // here
+
+
 }
 
 /**
@@ -173,10 +244,32 @@ function loginCustomer(email, password, rememberMe) {
     });
 }
 
+ function toHashMap (object) {
+    var HashMap = require('dw/util/HashMap');
+    var hashmap = new HashMap();
+
+    for (var key in object) {
+        if (object.hasOwnProperty(key)) {
+            hashmap.put(key, object[key]);
+        }
+    }
+    return hashmap;
+ }
+
+ function findAndReplaceStrings(textObj, string) {
+    for (var key in textObj) {
+        if (textObj.hasOwnProperty(key)) {
+            string = string.replace('{'+ key + '}', textObj[key])
+        }
+    }
+    return string;
+}
+
 module.exports = {
     getLoginRedirectURL: getLoginRedirectURL,
     sendCreateAccountEmail: sendCreateAccountEmail,
     sendPasswordResetEmail: sendPasswordResetEmail,
+    sendResetPinEmail: sendResetPinEmail,
     sendAccountEditedEmail: sendAccountEditedEmail,
     loginCustomer: loginCustomer
 };

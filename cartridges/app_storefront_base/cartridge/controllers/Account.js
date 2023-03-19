@@ -124,7 +124,7 @@ server.post(
                     type: emailHelpers.emailTypes.accountLocked
                 };
 
-                hooksHelper('app.customer.email', 'sendEmail', [emailObj, 'account/accountLockedEmail', context], function () {});
+                hooksHelper('app.customer.email', 'sendEmail', [emailObj, 'account/accountLockedEmail', context], function () { });
             }
 
             res.json({
@@ -226,7 +226,7 @@ server.post(
         };
 
         if (registrationForm.valid) {
-            res.setViewData(registrationFormObj);
+            res.setViewData(registrationFormObj, pinFormHtml);
 
             this.on('route:BeforeComplete', function (req, res) { // eslint-disable-line no-shadow
                 var Transaction = require('dw/system/Transaction');
@@ -748,6 +748,283 @@ server.get('SetNewPassword', server.middleware.https, consentTracking.consent, f
 });
 
 /**
+ * Account-SendResetPin : The Account-SendResetPin endpoint is the endpoint that gets hit once the shopper has clicked forgot password and has submitted their email address to request to reset their password
+ * @name Base/Account-SendResetPin
+ * @function
+ * @memberof Account
+ * @param {middleware} - server.middleware.https
+ * @param {querystringparameter} - mobile - a flag determining whether or not the shopper is on a mobile sized screen
+ * @param {httpparameter} - loginEmail - Input field, the shopper's email address
+ * @param {category} - sensitive
+ * @param {returns} - json
+ * @param {serverfunction} - post
+ */
+server.post('SendResetPin', server.middleware.https, function (req, res, next) {
+    var passwordForm = server.forms.getForm('newPasswords');
+
+    var CustomerMgr = require('dw/customer/CustomerMgr');
+    var Resource = require('dw/web/Resource');
+    var URLUtils = require('dw/web/URLUtils');
+    var accountHelpers = require('*/cartridge/scripts/helpers/accountHelpers');
+    var pin = Math.floor(Math.random() * 90000) + 100000;
+    var email = req.form.loginEmail;
+    var errorMsg;
+    var isValid;
+    var resettingCustomer;
+    var mobile = req.querystring.mobile;
+    var receivedMsgHeading = Resource.msg('label.resetpasswordreceived', 'login', null);
+    var receivedMsgBody = Resource.msg('msg.pin', 'login', null);
+    var inputMsgBody = '<input type="text" id="pin" name="pin" placeholder="Enter PIN Here ">';
+    var buttonText = Resource.msg('button.text.pin', 'login', null);
+    var returnUrl = URLUtils.url('Account-ValidateResetPin').toString();
+    var controlModal = false;
+    var pinForm = req.form.resetPin;
+    var pinFormNumber = Number(pinForm);
+    var passwordResetPinObject;
+    var date = new Date;
+    var dateToString = date.toString();
+    var pinObj = 'new Date';
+    var createCustomObjPIn;
+    var CustomObjectMgr = require('dw/object/CustomObjectMgr');
+    var Transaction = require('dw/system/Transaction');
+    var pinNumber = Math.floor(Math.random() * 90000) + 100000
+    var isPinExpired
+    var pinPreferencetime = dw.system.Site.getCurrent().getCustomPreferenceValue('resetPinTimeToLive');
+    var renderTemplateHelper = require('*/cartridge/scripts/renderTemplateHelper');
+
+    var attributeContext = { product: pinNumber };
+    var attributeTemplate = 'account/password/passwordResetPinForm';
+
+    var pinFormHtml = renderTemplateHelper.getRenderedHtml(
+        attributeContext,
+        attributeTemplate
+    );
+
+    Transaction.wrap(function () {
+        if (empty(CustomObjectMgr.getCustomObject('passwordResetPin', email))) {
+            createCustomObjPIn = CustomObjectMgr.createCustomObject('passwordResetPin', email);
+            passwordResetPinObject = CustomObjectMgr.getCustomObject('passwordResetPin', email);
+            passwordResetPinObject.custom.pinOject = email;
+            passwordResetPinObject.custom.pinNumber = pinNumber.toString();
+            passwordResetPinObject.custom.pinTime = dateToString;
+        }
+
+        passwordResetPinObject = CustomObjectMgr.getCustomObject('passwordResetPin', email);
+
+        if (passwordResetPinObject && passwordResetPinObject.custom.pinTime) {
+            var custoObjectTime = passwordResetPinObject.custom.pinTime;
+            var timeToLive = new Date(custoObjectTime).getTime() + Number(pinPreferencetime) * 60000;
+            var currentTime = date.getTime();
+            isPinExpired = currentTime >= timeToLive;
+        }
+
+        if (isPinExpired) {
+            passwordResetPinObject.custom.pinNumber = pinNumber.toString();
+            passwordResetPinObject.custom.pinTime = dateToString;
+        }
+    });
+
+    if (email) {
+        isValid = validateEmail(email);
+        if (isValid) {
+            resettingCustomer = CustomerMgr.getCustomerByLogin(email);
+            if (resettingCustomer) {
+                accountHelpers.sendResetPinEmail(email, resettingCustomer);
+
+            }
+
+            res.json({
+                success: true,
+                pinFormHtml: pinFormHtml,
+                emailData: email,
+                receivedMsgHeading: receivedMsgHeading,
+                receivedMsgBody: receivedMsgBody,
+                buttonText: buttonText,
+                mobile: mobile === 'true',
+                controlModal: controlModal,
+                inputMsgBody: inputMsgBody,
+                returnUrl: returnUrl
+            });
+        } else {
+            errorMsg = Resource.msg('error.message.passwordreset', 'login', null);
+            res.json({
+                fields: {
+                    loginEmail: errorMsg
+                }
+            });
+        }
+    } else {
+        errorMsg = Resource.msg('error.message.required', 'login', null);
+        res.json({
+            fields: {
+                loginEmail: errorMsg
+            }
+        });
+    }
+    next();
+});
+
+/**
+ * Account-ValidateResetPin : The Account-ValidateResetPin endpoint is the endpoint that gets hit once the shopper has clicked forgot password and has submitted their email address to request to reset their password
+ * @name Base/Account-ValidateResetPin
+ * @function
+ * @memberof Account
+ * @param {middleware} - server.middleware.https
+ * @param {querystringparameter} - mobile - a flag determining whether or not the shopper is on a mobile sized screen
+ * @param {httpparameter} - loginEmail - Input field, the shopper's email address
+ * @param {category} - sensitive
+ * @param {returns} - json
+ * @param {serverfunction} - post
+ */
+server.post('ValidateResetPin', server.middleware.https, function (req, res, next) {
+
+    var CustomerMgr = require('dw/customer/CustomerMgr');
+    var Resource = require('dw/web/Resource');
+    var URLUtils = require('dw/web/URLUtils');
+    var accountHelpers = require('*/cartridge/scripts/helpers/accountHelpers');
+    var pin = Math.floor(Math.random() * 90000) + 100000;
+    var isPinValid = true;
+    var pinForm = req.form.resetPin;
+    var pinFormNumber = Number(pinForm);
+    var email = req.form.loginEmail;
+    var passwordResetPinObject;
+    var date = new Date;
+    var dateToString = date.toString();
+    var debug = req;
+    var pinObj = 'new Date';
+    var createCustomObjPIn;
+    var CustomObjectMgr = require('dw/object/CustomObjectMgr');
+    var Transaction = require('dw/system/Transaction');
+    Transaction.wrap(function () {
+        if (empty(CustomObjectMgr.getCustomObject('passwordResetPin', email))) {
+            createCustomObjPIn = CustomObjectMgr.createCustomObject('passwordResetPin', email);
+            passwordResetPinObject = CustomObjectMgr.getCustomObject('passwordResetPin', email);
+            passwordResetPinObject.custom.pinOject = email;
+            passwordResetPinObject.custom.pinNumber = Math.floor(Math.random() * 90000) + 100000;
+            passwordResetPinObject.custom.pinTime = dateToString;
+
+        }
+        passwordResetPinObject = CustomObjectMgr.getCustomObject('passwordResetPin', email);
+    });
+    var errorMsg;
+    var isValid;
+    var resettingCustomer;
+    var mobile = req.querystring.mobile;
+    var receivedMsgHeading = Resource.msg('label.resetpasswordreceived', 'login', null);
+    var receivedMsgBody = Resource.msg('msg.pin.success', 'login', null);
+    var buttonText = Resource.msg('button.text.loginform', 'login', null);
+    var returnUrl = URLUtils.url('Account-DisplayResetForm').toString();
+    var pinFormHtml = '';
+
+    if (pinFormNumber && pinFormNumber === pinFormNumber) {
+        isValid = validateEmail(email);
+        if (isValid) {
+            resettingCustomer = CustomerMgr.getCustomerByLogin(email);
+            if (resettingCustomer) {
+                accountHelpers.sendPasswordResetEmail(email, resettingCustomer);
+                var renderTemplateHelper = require('*/cartridge/scripts/renderTemplateHelper');
+                var attributeTemplate = 'account/password/newPasswordForm';
+                var passwordResetToken = getPasswordResetToken(resettingCustomer);
+                var passwordForm = server.forms.getForm('newPasswords');
+                passwordForm.clear();
+                // attributeContext holds the pdict data
+                var attributeContext = {
+                    token: passwordResetToken,
+                    passwordForm: passwordForm
+                }
+                pinFormHtml = renderTemplateHelper.getRenderedHtml(
+                    attributeContext,
+                    attributeTemplate
+                );
+            }
+            res.json({
+                success: true,
+                receivedMsgHeading: receivedMsgHeading,
+                receivedMsgBody: receivedMsgBody,
+                buttonText: buttonText,
+                clearButton: true,
+                mobile: mobile === 'true',
+                returnUrl: returnUrl,
+                pinFormHtml: pinFormHtml
+            });
+        } else {
+            errorMsg = Resource.msg('error.message.pin', 'login', null);
+            res.json({
+                fields: {
+                    loginEmail: errorMsg
+                }
+            });
+        }
+    } else {
+        errorMsg = Resource.msg('error.message.pin', 'login', null);
+        res.json({
+            fields: {
+                loginEmail: errorMsg
+            }
+        });
+    }
+    next();
+});
+
+
+server.post('CheckPin', server.middleware.https, function (req, res, next) {
+    var CustomerMgr = require('dw/customer/CustomerMgr');
+    var Resource = require('dw/web/Resource');
+    var URLUtils = require('dw/web/URLUtils');
+    var accountHelpers = require('*/cartridge/scripts/helpers/accountHelpers');
+    var pin;
+    var pinForm = req.form.resetPin;
+    var pinFormNumber = Number(pinForm);
+    var email = req.form.loginEmail;
+    var errorMsg;
+    var isValid;
+    var resettingCustomer;
+    var mobile = req.querystring.mobile;
+    var receivedMsgHeading = Resource.msg('msg.password.success', 'login', null);
+    var receivedMsgBody = Resource.msg('msg.pin', 'login', null);
+    var buttonText = Resource.msg('button.text.loginform', 'login', null);
+    var returnUrl = URLUtils.url('Login-Show').toString();
+    var Transaction = require('dw/system/Transaction');
+    var CustomObjectMgr = require('dw/object/CustomObjectMgr');
+    var passwordResetPinObject;
+
+    passwordResetPinObject = CustomObjectMgr.getCustomObject('passwordResetPin', email);
+    pin = Number(passwordResetPinObject.custom.pinNumber);
+
+    if (pinFormNumber && pinFormNumber === pin) {
+        isValid = validateEmail(email);
+        if (isValid) {
+            resettingCustomer = CustomerMgr.getCustomerByLogin(email);
+            if (resettingCustomer) {
+                accountHelpers.sendPasswordResetEmail(email, resettingCustomer);
+            }
+
+            res.json({
+                success: true,
+                receivedMsgHeading: receivedMsgHeading,
+                receivedMsgBody: receivedMsgBody,
+                buttonText: buttonText,
+                returnUrl: returnUrl
+            });
+        } else {
+            errorMsg = Resource.msg('error.message.pin', 'login', null);
+            res.json({
+                fields: {
+                    loginEmail: errorMsg
+                }
+            });
+        }
+    } else {
+        errorMsg = Resource.msg('error.message.pin', 'login', null);
+        res.json({
+            fields: {
+                loginEmail: errorMsg
+            }
+        });
+    }
+    next();
+});
+/**
  * Account-SaveNewPassword : The Account-SaveNewPassword endpoint handles resetting a shoppers password. This is the last step in the forgot password user flow. (This step does not log the shopper in.)
  * @name Base/Account-SaveNewPassword
  * @function
@@ -755,12 +1032,32 @@ server.get('SetNewPassword', server.middleware.https, consentTracking.consent, f
  * @param {middleware} - server.middleware.https
  * @param {querystringparameter} - Token - SFRA utilizes this token to retrieve the shopper
  * @param {httpparameter} - dwfrm_newPasswords_newpassword - Input field for the shopper's new password
- * @param {httpparameter} - dwfrm_newPasswords_newpasswordconfirm  - Input field to confirm the shopper's new password
+ * @param {httpparameter} - F  - Input field to confirm the shopper's new password
  * @param {httpparameter} - save - unutilized param
  * @param {category} - sensitive
  * @param {renders} - isml
  * @param {serverfunction} - post
  */
+server.post('DisplayResetForm', server.middleware.https, function (req, res, next) {
+    var renderTemplateHelper = require('*/cartridge/scripts/renderTemplateHelper');
+    var attributeTemplate = 'account/password/newPasswordForm';
+    var passwordResetToken = getPasswordResetToken(resettingCustomer);
+    var passwordForm = server.forms.getForm('newPasswords');
+
+    // attributeContext holds the pdict data
+    var attributeContext = {
+        token: passwordResetToken
+    }
+    pinFormHtml = renderTemplateHelper.getRenderedHtml(
+        attributeContext,
+        attributeTemplate
+    );
+    res.json({
+        pinFormHtml: pinFormHtml
+    });
+    next();
+});
+
 server.post('SaveNewPassword', server.middleware.https, function (req, res, next) {
     var Transaction = require('dw/system/Transaction');
     var Resource = require('dw/web/Resource');
@@ -835,6 +1132,16 @@ server.post('SaveNewPassword', server.middleware.https, function (req, res, next
     next();
 });
 
+function getPasswordResetToken(customer) {
+    var Transaction = require('dw/system/Transaction');
+
+    var passwordResetToken;
+    Transaction.wrap(function () {
+        passwordResetToken = customer.profile.credentials.createResetPasswordToken();
+    });
+    return passwordResetToken;
+}
+
 /**
  * Account-Header : The Account-Header endpoint is used as a remote include to include the login/account menu in the header
  * @name Base/Account-Header
@@ -848,8 +1155,9 @@ server.post('SaveNewPassword', server.middleware.https, function (req, res, next
  */
 server.get('Header', server.middleware.include, function (req, res, next) {
     var template = req.querystring.mobile ? 'account/mobileHeader' : 'account/header';
-    res.render(template, { name:
-        req.currentCustomer.profile ? req.currentCustomer.profile.firstName : null
+    res.render(template, {
+        name:
+            req.currentCustomer.profile ? req.currentCustomer.profile.firstName : null
     });
     next();
 });

@@ -17,6 +17,7 @@ function getRenderedHtml(templateContext, templateName) {
     });
 
     var template = new Template(templateName);
+    var debug = template.render(context).text;
     return template.render(context).text;
 }
 

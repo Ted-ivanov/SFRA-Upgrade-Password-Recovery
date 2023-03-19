@@ -76,7 +76,7 @@ module.exports = {
     },
 
     resetPassword: function () {
-        $('.reset-password-form').submit(function (e) {
+        $('body').on('submit', '.reset-password-form', function (e) {
             var form = $(this);
             e.preventDefault();
             var url = form.attr('action');
@@ -93,12 +93,19 @@ module.exports = {
                         formValidation(form, data);
                     } else {
                         $('.request-password-title').text(data.receivedMsgHeading);
-                        $('.request-password-body').empty()
-                            .append('<p>' + data.receivedMsgBody + '</p>');
+                        $('.modal-body').html(data.pinFormHtml);
+                        $('#reset-password-pin').attr('data-email', data.emailData);
+                        $('#reset').val(data.emailData);
+
                         if (!data.mobile) {
+                            // problem here
+
                             $('#submitEmailButton').text(data.buttonText)
                                 .attr('data-dismiss', 'modal');
                         } else {
+                            $('.reset-password-form').html(data.pinFormHtml);
+                            $('#reset-password-pin').attr('data-email', data.emailData);
+                            $('#reset').val(data.emailData);
                             $('.send-email-btn').empty()
                                 .html('<a href="'
                                     + data.returnUrl

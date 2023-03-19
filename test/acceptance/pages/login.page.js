@@ -25,7 +25,8 @@ module.exports = {
         verifyPasswordModal: '.modal-content',
         hamburgerLogin: '.navbar-toggler.d-md-none',
         loginBtn: '.nav-item.d-lg-none',
-        loginBtnLink: 'a.nav-link'
+        loginBtnLink: 'a.nav-link',
+        resetPasswordPin: '#reset-password-pin'
     },
     login(email, password) {
         // fill login form
@@ -65,6 +66,14 @@ module.exports = {
         I.waitForElement(locator);
         I.fillField(locator, email);
     },
+    forgotPin(email) {
+        I.wait(2); // Must wait because of modal fade chops the email param off randomly and fails the test
+        let locator = locate(this.locators.resetPasswordPin)
+            .withAttr({ name: 'pinForm' });
+        I.waitForElement(locator);
+        I.fillField(locator, email);
+    },
+
     verifyPasswordReset() {
         I.waitForElement(this.locators.submitEmailBtn);
         I.click(this.locators.submitEmailBtn);
