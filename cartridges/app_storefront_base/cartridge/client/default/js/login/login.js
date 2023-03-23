@@ -97,7 +97,7 @@ module.exports = {
                         $('#reset-password-pin').attr('data-email', data.emailData);
                         $('#reset').val(data.emailData);
 
-                        if (!data.mobile) {
+                        if (false) {
                             // problem here
 
                             $('#submitEmailButton').text(data.buttonText)

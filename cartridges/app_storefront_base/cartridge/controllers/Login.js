@@ -32,18 +32,6 @@ server.get(
         var URLUtils = require('dw/web/URLUtils');
         var Resource = require('dw/web/Resource');
         var target = req.querystring.rurl || 1;
-        var string = 'String {var}'
-        var updatedString = string.replace('{var}', 'AAAAAAAAAA')
-        var ContentMgr = require('dw/content/ContentMgr');
-        const asset = ContentMgr.getContent('ca-pin-reset');
-        const assetContent = asset.custom.body.source.toString();
-        var newText = assetContent.replace('{pin}', '1234');
-        newText = newText.replace('{firstName}', 'First');
-        newText = newText.replace('{lastName}', 'Last');
-        newText = newText.replace('{greeting}', 'Hello');
-        newText = newText.replace('{time}', '999');
-
-
         var rememberMe = false;
         var userName = '';
         var actionUrl = URLUtils.url('Account-Login', 'rurl', target);

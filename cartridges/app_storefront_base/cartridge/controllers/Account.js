@@ -783,7 +783,6 @@ server.post('SendResetPin', server.middleware.https, function (req, res, next) {
     var passwordResetPinObject;
     var date = new Date;
     var dateToString = date.toString();
-    var pinObj = 'new Date';
     var createCustomObjPIn;
     var CustomObjectMgr = require('dw/object/CustomObjectMgr');
     var Transaction = require('dw/system/Transaction');
@@ -791,10 +790,8 @@ server.post('SendResetPin', server.middleware.https, function (req, res, next) {
     var isPinExpired
     var pinPreferencetime = dw.system.Site.getCurrent().getCustomPreferenceValue('resetPinTimeToLive');
     var renderTemplateHelper = require('*/cartridge/scripts/renderTemplateHelper');
-
     var attributeContext = { product: pinNumber };
     var attributeTemplate = 'account/password/passwordResetPinForm';
-
     var pinFormHtml = renderTemplateHelper.getRenderedHtml(
         attributeContext,
         attributeTemplate
@@ -891,7 +888,6 @@ server.post('ValidateResetPin', server.middleware.https, function (req, res, nex
     var date = new Date;
     var dateToString = date.toString();
     var debug = req;
-    var pinObj = 'new Date';
     var createCustomObjPIn;
     var CustomObjectMgr = require('dw/object/CustomObjectMgr');
     var Transaction = require('dw/system/Transaction');
@@ -966,64 +962,6 @@ server.post('ValidateResetPin', server.middleware.https, function (req, res, nex
     next();
 });
 
-
-server.post('CheckPin', server.middleware.https, function (req, res, next) {
-    var CustomerMgr = require('dw/customer/CustomerMgr');
-    var Resource = require('dw/web/Resource');
-    var URLUtils = require('dw/web/URLUtils');
-    var accountHelpers = require('*/cartridge/scripts/helpers/accountHelpers');
-    var pin;
-    var pinForm = req.form.resetPin;
-    var pinFormNumber = Number(pinForm);
-    var email = req.form.loginEmail;
-    var errorMsg;
-    var isValid;
-    var resettingCustomer;
-    var mobile = req.querystring.mobile;
-    var receivedMsgHeading = Resource.msg('msg.password.success', 'login', null);
-    var receivedMsgBody = Resource.msg('msg.pin', 'login', null);
-    var buttonText = Resource.msg('button.text.loginform', 'login', null);
-    var returnUrl = URLUtils.url('Login-Show').toString();
-    var Transaction = require('dw/system/Transaction');
-    var CustomObjectMgr = require('dw/object/CustomObjectMgr');
-    var passwordResetPinObject;
-
-    passwordResetPinObject = CustomObjectMgr.getCustomObject('passwordResetPin', email);
-    pin = Number(passwordResetPinObject.custom.pinNumber);
-
-    if (pinFormNumber && pinFormNumber === pin) {
-        isValid = validateEmail(email);
-        if (isValid) {
-            resettingCustomer = CustomerMgr.getCustomerByLogin(email);
-            if (resettingCustomer) {
-                accountHelpers.sendPasswordResetEmail(email, resettingCustomer);
-            }
-
-            res.json({
-                success: true,
-                receivedMsgHeading: receivedMsgHeading,
-                receivedMsgBody: receivedMsgBody,
-                buttonText: buttonText,
-                returnUrl: returnUrl
-            });
-        } else {
-            errorMsg = Resource.msg('error.message.pin', 'login', null);
-            res.json({
-                fields: {
-                    loginEmail: errorMsg
-                }
-            });
-        }
-    } else {
-        errorMsg = Resource.msg('error.message.pin', 'login', null);
-        res.json({
-            fields: {
-                loginEmail: errorMsg
-            }
-        });
-    }
-    next();
-});
 /**
  * Account-SaveNewPassword : The Account-SaveNewPassword endpoint handles resetting a shoppers password. This is the last step in the forgot password user flow. (This step does not log the shopper in.)
  * @name Base/Account-SaveNewPassword
