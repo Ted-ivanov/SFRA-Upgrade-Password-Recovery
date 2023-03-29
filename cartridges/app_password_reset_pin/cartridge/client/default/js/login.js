@@ -77,7 +77,8 @@ module.exports = {
 
     resetPassword: function () {
         $('body').on('submit', '.reset-password-form', function (e) {
-            alert('ALABALANICA');
+            console.log('test');
+            alert('ALERT ! ! ')
             var form = $(this);
             e.preventDefault();
             var url = form.attr('action');
