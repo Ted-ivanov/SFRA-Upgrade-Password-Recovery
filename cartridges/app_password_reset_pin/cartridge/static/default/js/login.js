@@ -1,1 +1,45 @@
-!function(r){var e={};function t(n){if(e[n])return e[n].exports;var o=e[n]={i:n,l:!1,exports:{}};return r[n].call(o.exports,o,o.exports,t),o.l=!0,o.exports}t.m=r,t.c=e,t.d=function(r,e,n){t.o(r,e)||Object.defineProperty(r,e,{enumerable:!0,get:n})},t.r=function(r){"undefined"!=typeof Symbol&&Symbol.toStringTag&&Object.defineProperty(r,Symbol.toStringTag,{value:"Module"}),Object.defineProperty(r,"__esModule",{value:!0})},t.t=function(r,e){if(1&e&&(r=t(r)),8&e)return r;if(4&e&&"object"==typeof r&&r&&r.__esModule)return r;var n=Object.create(null);if(t.r(n),Object.defineProperty(n,"default",{enumerable:!0,value:r}),2&e&&"string"!=typeof r)for(var o in r)t.d(n,o,function(e){return r[e]}.bind(null,o));return n},t.n=function(r){var e=r&&r.__esModule?function(){return r.default}:function(){return r};return t.d(e,"a",e),e},t.o=function(r,e){return Object.prototype.hasOwnProperty.call(r,e)},t.p="",t(t.s=45)}({2:function(r,e,t){"use strict";r.exports=function(r){"function"==typeof r?r():"object"==typeof r&&Object.keys(r).forEach((function(e){"function"==typeof r[e]&&r[e]()}))}},24:function(r,e,t){"use strict";r.exports=function(r,e){var t='<div class="alert alert-danger alert-dismissible fade show" role="alert"><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>'+e+"</div>";$(r).append(t)}},4:function(r,e,t){"use strict";r.exports=function(r,e){(function(r){$(r).find(".form-control.is-invalid").removeClass("is-invalid")}(r),$(".alert",r).remove(),"object"==typeof e&&e.fields&&Object.keys(e.fields).forEach((function(t){if(e.fields[t]){var n=$(r).find('[name="'+t+'"]').parent().children(".invalid-feedback");n.length>0&&(Array.isArray(e[t])?n.html(e.fields[t].join("<br/>")):n.html(e.fields[t]),n.siblings(".form-control").addClass("is-invalid"))}})),e&&e.error)&&("FORM"===$(r).prop("tagName")?$(r):$(r).parents("form")).prepend('<div class="alert alert-danger" role="alert">'+e.error.join("<br/>")+"</div>")}},45:function(r,e,t){"use strict";var n=t(2);$(document).ready((function(){n(t(46))}))},46:function(r,e,t){"use strict";var n=t(4),o=t(24);r.exports={login:function(){$("form.login").submit((function(r){var e=$(this);r.preventDefault();var t=e.attr("action");return e.spinner().start(),$("form.login").trigger("login:submit",r),$.ajax({url:t,type:"post",dataType:"json",data:e.serialize(),success:function(r){e.spinner().stop(),r.success?($("form.login").trigger("login:success",r),location.href=r.redirectUrl):(n(e,r),$("form.login").trigger("login:error",r))},error:function(r){r.responseJSON.redirectUrl?window.location.href=r.responseJSON.redirectUrl:($("form.login").trigger("login:error",r),e.spinner().stop())}}),!1}))},register:function(){$("form.registration").submit((function(r){var e=$(this);r.preventDefault();var t=e.attr("action");return e.spinner().start(),$("form.registration").trigger("login:register",r),$.ajax({url:t,type:"post",dataType:"json",data:e.serialize(),success:function(r){e.spinner().stop(),r.success?($("form.registration").trigger("login:register:success",r),location.href=r.redirectUrl):($("form.registration").trigger("login:register:error",r),n(e,r))},error:function(r){r.responseJSON.redirectUrl?window.location.href=r.responseJSON.redirectUrl:o($(".error-messaging"),r.responseJSON.errorMessage),e.spinner().stop()}}),!1}))},resetPassword:function(){$("body").on("submit",".reset-password-form",(function(r){var e=$(this);r.preventDefault();var t=e.attr("action");return e.spinner().start(),$(".reset-password-form").trigger("login:register",r),$.ajax({url:t,type:"post",dataType:"json",data:e.serialize(),success:function(r){e.spinner().stop(),r.success?($(".request-password-title").text(r.receivedMsgHeading),$(".modal-body").html(r.pinFormHtml),$("#reset-password-pin").attr("data-email",r.emailData),$("#reset").val(r.emailData),$(".reset-password-form").html(r.pinFormHtml),$("#reset-password-pin").attr("data-email",r.emailData),$("#reset").val(r.emailData),$(".send-email-btn").empty().html('<a href="'+r.returnUrl+'" class="btn btn-primary btn-block">'+r.buttonText+"</a>")):n(e,r)},error:function(){e.spinner().stop()}}),!1}))},clearResetForm:function(){$("#login .modal").on("hidden.bs.modal",(function(){$("#reset-password-email").val(""),$(".modal-dialog .form-control.is-invalid").removeClass("is-invalid")}))}}}});
+    $('body').on('submit', '.reset-password-form', function (e) {
+        var form = $(this);
+        e.preventDefault();
+        var url = form.attr('action');
+        form.spinner().start();
+        $('.reset-password-form').trigger('login:register', e);
+        $.ajax({
+            url: url,
+            type: 'post',
+            dataType: 'json',
+            data: form.serialize(),
+            success: function (data) {
+                form.spinner().stop();
+                if (!data.success) {
+                    formValidation(form, data);
+                } else {
+                    $('.request-password-title').text(data.receivedMsgHeading);
+                    $('.modal-body').html(data.pinFormHtml);
+                    $('#reset-password-pin').attr('data-email', data.emailData);
+                    $('#reset').val(data.emailData);
+
+                    if (false) {
+                        // problem here
+
+                        $('#submitEmailButton').text(data.buttonText)
+                            .attr('data-dismiss', 'modal');
+                    } else {
+                        $('.reset-password-form').html(data.pinFormHtml);
+                        $('#reset-password-pin').attr('data-email', data.emailData);
+                        $('#reset').val(data.emailData);
+                        $('.send-email-btn').empty()
+                            .html('<a href="'
+                                + data.returnUrl
+                                + '" class="btn btn-primary btn-block">'
+                                + data.buttonText + '</a>'
+                            );
+                    }
+                }
+            },
+            error: function () {
+                form.spinner().stop();
+            }
+        });
+        return false;
+    });
