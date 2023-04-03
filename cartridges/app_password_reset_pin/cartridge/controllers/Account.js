@@ -5,7 +5,9 @@
  */
 
 var server = require('server');
-
+var superModule = module.superModule;
+var page = module.superModule;
+server.extend(page);
 var csrfProtection = require('*/cartridge/scripts/middleware/csrf');
 var userLoggedIn = require('*/cartridge/scripts/middleware/userLoggedIn');
 var consentTracking = require('*/cartridge/scripts/middleware/consentTracking');
@@ -19,34 +21,6 @@ function validateEmail(email) {
     var regex = /^[\w.%+-]+@[\w.-]+\.[\w]{2,6}$/;
     return regex.test(email);
 }
-
-/**
- * Account-SetNewPassword : The Account-SetNewPassword endpoint renders the page that displays the password reset form
- * @name Base/Account-SetNewPassword
- * @function
- * @memberof Account
- * @param {middleware} - server.middleware.https
- * @param {middleware} - consentTracking.consent
- * @param {querystringparameter} - Token - SFRA utilizes this token to retrieve the shopper
- * @param {category} - sensitive
- * @param {renders} - isml
- * @param {serverfunction} - get
- */
-server.get('SetNewPassword', server.middleware.https, consentTracking.consent, function (req, res, next) {
-    var CustomerMgr = require('dw/customer/CustomerMgr');
-    var URLUtils = require('dw/web/URLUtils');
-
-    var passwordForm = server.forms.getForm('newPasswords');
-    passwordForm.clear();
-    var token = req.querystring.Token;
-    var resettingCustomer = CustomerMgr.getCustomerByToken(token);
-    if (!resettingCustomer) {
-        res.redirect(URLUtils.url('Account-PasswordReset'));
-    } else {
-        res.render('account/password/newPassword', { passwordForm: passwordForm, token: token });
-    }
-    next();
-});
 
 /**
  * Account-SendResetPin : The Account-SendResetPin endpoint is the endpoint that gets hit once the shopper has clicked forgot password and has submitted their email address to request to reset their password
@@ -175,7 +149,6 @@ server.post('SendResetPin', server.middleware.https, function (req, res, next) {
  * @param {serverfunction} - post
  */
 server.post('ValidateResetPin', server.middleware.https, function (req, res, next) {
-
     var CustomerMgr = require('dw/customer/CustomerMgr');
     var Resource = require('dw/web/Resource');
     var URLUtils = require('dw/web/URLUtils');
@@ -199,7 +172,6 @@ server.post('ValidateResetPin', server.middleware.https, function (req, res, nex
             passwordResetPinObject.custom.pinOject = email;
             passwordResetPinObject.custom.pinNumber = Math.floor(Math.random() * 90000) + 100000;
             passwordResetPinObject.custom.pinTime = dateToString;
-
         }
         passwordResetPinObject = CustomObjectMgr.getCustomObject('passwordResetPin', email);
     });
@@ -294,80 +266,6 @@ server.post('DisplayResetForm', server.middleware.https, function (req, res, nex
     res.json({
         pinFormHtml: pinFormHtml
     });
-    next();
-});
-
-server.post('SaveNewPassword', server.middleware.https, function (req, res, next) {
-    var Transaction = require('dw/system/Transaction');
-    var Resource = require('dw/web/Resource');
-
-    var passwordForm = server.forms.getForm('newPasswords');
-    var token = req.querystring.Token;
-
-    if (passwordForm.newpassword.value !== passwordForm.newpasswordconfirm.value) {
-        passwordForm.valid = false;
-        passwordForm.newpassword.valid = false;
-        passwordForm.newpasswordconfirm.valid = false;
-        passwordForm.newpasswordconfirm.error =
-            Resource.msg('error.message.mismatch.newpassword', 'forms', null);
-    }
-
-    if (passwordForm.valid) {
-        var result = {
-            newPassword: passwordForm.newpassword.value,
-            newPasswordConfirm: passwordForm.newpasswordconfirm.value,
-            token: token,
-            passwordForm: passwordForm
-        };
-        res.setViewData(result);
-        this.on('route:BeforeComplete', function (req, res) { // eslint-disable-line no-shadow
-            var CustomerMgr = require('dw/customer/CustomerMgr');
-            var URLUtils = require('dw/web/URLUtils');
-            var Site = require('dw/system/Site');
-            var emailHelpers = require('*/cartridge/scripts/helpers/emailHelpers');
-
-            var formInfo = res.getViewData();
-            var status;
-            var resettingCustomer;
-            Transaction.wrap(function () {
-                resettingCustomer = CustomerMgr.getCustomerByToken(formInfo.token);
-                status = resettingCustomer.profile.credentials.setPasswordWithToken(
-                    formInfo.token,
-                    formInfo.newPassword
-                );
-            });
-            if (status.error) {
-                passwordForm.newpassword.valid = false;
-                passwordForm.newpasswordconfirm.valid = false;
-                passwordForm.newpasswordconfirm.error =
-                    Resource.msg('error.message.resetpassword.invalidformentry', 'forms', null);
-                res.render('account/password/newPassword', {
-                    passwordForm: passwordForm,
-                    token: token
-                });
-            } else {
-                var email = resettingCustomer.profile.email;
-                var url = URLUtils.https('Login-Show');
-                var objectForEmail = {
-                    firstName: resettingCustomer.profile.firstName,
-                    lastName: resettingCustomer.profile.lastName,
-                    url: url
-                };
-
-                var emailObj = {
-                    to: email,
-                    subject: Resource.msg('subject.profile.resetpassword.email', 'login', null),
-                    from: Site.current.getCustomPreferenceValue('customerServiceEmail') || 'no-reply@testorganization.com',
-                    type: emailHelpers.emailTypes.passwordReset
-                };
-
-                emailHelpers.sendEmail(emailObj, 'account/password/passwordChangedEmail', objectForEmail);
-                res.redirect(URLUtils.url('Login-Show'));
-            }
-        });
-    } else {
-        res.render('account/password/newPassword', { passwordForm: passwordForm, token: token });
-    }
     next();
 });
 
