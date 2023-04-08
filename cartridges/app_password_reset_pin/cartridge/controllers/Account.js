@@ -54,7 +54,7 @@ server.post('SendResetPin', server.middleware.https, function (req, res, next) {
     var returnUrl = URLUtils.url('Account-ValidateResetPin').toString();
     var controlModal = false;
     var pinForm = req.form.resetPin;
-    var pinFormNumber = Number(pinForm);
+    var pinFormNumber = pinForm;
     var passwordResetPinObject;
     var date = new Date;
     var dateToString = date.toString();
@@ -156,15 +156,15 @@ server.post('ValidateResetPin', server.middleware.https, function (req, res, nex
     var pin = Math.floor(Math.random() * 90000) + 100000;
     var isPinValid = true;
     var pinForm = req.form.resetPin;
-    var pinFormNumber = Number(pinForm);
+    var pinFormNumber = pinForm;
     var email = req.form.loginEmail;
     var passwordResetPinObject;
     var date = new Date;
     var dateToString = date.toString();
-    var debug = req;
     var createCustomObjPIn;
     var CustomObjectMgr = require('dw/object/CustomObjectMgr');
     var Transaction = require('dw/system/Transaction');
+    var customObjPin;
     Transaction.wrap(function () {
         if (empty(CustomObjectMgr.getCustomObject('passwordResetPin', email))) {
             createCustomObjPIn = CustomObjectMgr.createCustomObject('passwordResetPin', email);
@@ -174,6 +174,7 @@ server.post('ValidateResetPin', server.middleware.https, function (req, res, nex
             passwordResetPinObject.custom.pinTime = dateToString;
         }
         passwordResetPinObject = CustomObjectMgr.getCustomObject('passwordResetPin', email);
+        customObjPin = passwordResetPinObject.custom.pinNumber;
     });
     var errorMsg;
     var isValid;
@@ -185,7 +186,7 @@ server.post('ValidateResetPin', server.middleware.https, function (req, res, nex
     var returnUrl = URLUtils.url('Account-DisplayResetForm').toString();
     var pinFormHtml = '';
 
-    if (pinFormNumber && pinFormNumber === pinFormNumber) {
+    if (pinFormNumber && (customObjPin === pinFormNumber)) {
         isValid = validateEmail(email);
         if (isValid) {
             resettingCustomer = CustomerMgr.getCustomerByLogin(email);
